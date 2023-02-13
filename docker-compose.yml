@@ -1,0 +1,8 @@
+version: "3.7"
+services:
+  app:
+    image: python:3.10.9
+    command: sh -c "pip install -r requirements.txt && python3 bot_on_handlers.py"
+    volumes:
+      - ./:/app
+    working_dir: /app

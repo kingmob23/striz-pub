@@ -35,8 +35,8 @@ from aiogram.types import ParseMode
 from aiogram.utils import executor
 
 
-from arriva import get_json
 from proxie import get_webshare_proxies_list, make_get_request_with_proxie
+from db import get_user, put_user, put_message
 
 
 domen1 = os.environ['DOMEN1']
@@ -98,9 +98,7 @@ dp = Dispatcher(bot, storage=storage)
 
 
 # States
-
 class Form(StatesGroup):
-
     arriving = State()
     departing = State()
     history = State()
@@ -125,9 +123,14 @@ keyboard = types.ReplyKeyboardMarkup(
 
 
 @dp.message_handler(commands='start')
-async def privet(message: types.Message):
-    global user_id
+async def privet(message: types.Message, state: FSMContext):
     user_id = message['from']['id']
+    user = get_user(user_id)
+    if not user:
+        first_name = message['from']['first_name']
+        username = message['from']['username']
+        put_user(user_id, first_name, username)
+
     await message.answer('privet, che hochesh?', reply_markup=keyboard)
 
 
@@ -139,11 +142,17 @@ async def arriving_privet(message: types.Message):
 
 @dp.message_handler(state=Form.arriving)
 async def arriving_worker(message: types.Message, state: FSMContext):
-    global flight
-    flight = message.text
+    date = message['date']
+    text = message.text
+    state_for_logs = 'arriving'
+    user_id = message['from']['id']
+    put_message(date, text, state_for_logs, user_id)
+
+    flight = text
 
     url = f'https://{domen3}/clickhandler/?version=1.5&flight={flight}'
     r = requests.get(url)
+
     try:
         json = r.json()
         try:
@@ -187,7 +196,7 @@ async def arriving_worker(message: types.Message, state: FSMContext):
         if real_arrival_time_unix:
             await message.answer(f'Flight landed! Real Arrival Time: {datetime.fromtimestamp(real_arrival_time_unix)}')
 
-    except requests.exceptions.JSONDecodeError:
+    except:
         await message.answer('invalid')
     finally:
         await state.finish()
@@ -224,8 +233,13 @@ def get_json_departing(api_headers, flight):
 
 @dp.message_handler(state=Form.departing)
 async def departing_worker(message: types.Message, state: FSMContext):
-    global aircraft_registration
-    aircraft_registration = message.text
+    date = message['date']
+    text = message.text
+    state_for_logs = 'departing'
+    user_id = message['from']['id']
+    put_message(date, text, state_for_logs, user_id)
+
+    aircraft_registration = text
 
     all_flights = get_all_scheduled_flights(soup_headers, aircraft_registration)
 
@@ -257,8 +271,13 @@ async def history_privet(message: types.Message):
 
 @dp.message_handler(state=Form.history)
 async def history_worker(message: types.Message, state: FSMContext):
-    global flight
-    flight = message.text
+    date = message['date']
+    text = message.text
+    state_for_logs = 'history'
+    user_id = message['from']['id']
+    put_message(date, text, state_for_logs, user_id)
+
+    flight = text
 
     url = f'https://{domen1}/data/flights/{flight}'
 
@@ -340,9 +359,14 @@ async def square_privet(message: types.Message):
 
 @dp.message_handler(state=Form.square)
 async def square_worker(message: types.Message, state: FSMContext):
-    global coords
+    date = message['date']
+    text = message.text
+    state_for_logs = 'square'
+    user_id = message['from']['id']
+    put_message(date, text, state_for_logs, user_id)
+
     try:
-        latitude, longitude = message.text.split()
+        latitude, longitude = text.split()
 
         square_url = f'https://{domen2}/zones/fcgi/feed.js?faa=1&bounds={latitude}%2C{longitude}%2C27.731%2C28.389&satellite=1&mlat=1&flarm=1&adsb=1&gnd=1&air=1&vehicles=1&estimated=1&maxage=14400&gliders=1&stats=1'
 

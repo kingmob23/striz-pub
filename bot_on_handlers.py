@@ -143,7 +143,7 @@ async def arriving_privet(message: types.Message):
 @dp.message_handler(state=Form.arriving)
 async def arriving_worker(message: types.Message, state: FSMContext):
     date = message['date']
-    text = message.text
+    text = message.text.lower()
     state_for_logs = 'arriving'
     user_id = message['from']['id']
     put_message(date, text, state_for_logs, user_id)
@@ -234,7 +234,7 @@ def get_json_departing(api_headers, flight):
 @dp.message_handler(state=Form.departing)
 async def departing_worker(message: types.Message, state: FSMContext):
     date = message['date']
-    text = message.text
+    text = message.text.lower()
     state_for_logs = 'departing'
     user_id = message['from']['id']
     put_message(date, text, state_for_logs, user_id)
@@ -272,7 +272,7 @@ async def history_privet(message: types.Message):
 @dp.message_handler(state=Form.history)
 async def history_worker(message: types.Message, state: FSMContext):
     date = message['date']
-    text = message.text
+    text = message.text.lower()
     state_for_logs = 'history'
     user_id = message['from']['id']
     put_message(date, text, state_for_logs, user_id)
@@ -360,7 +360,7 @@ async def square_privet(message: types.Message):
 @dp.message_handler(state=Form.square)
 async def square_worker(message: types.Message, state: FSMContext):
     date = message['date']
-    text = message.text
+    text = message.text.lower()
     state_for_logs = 'square'
     user_id = message['from']['id']
     put_message(date, text, state_for_logs, user_id)

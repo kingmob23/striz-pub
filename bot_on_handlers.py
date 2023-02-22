@@ -1,3 +1,8 @@
+from json.decoder import JSONDecodeError
+
+import aiohttp
+import asyncio
+
 import os
 
 from pprint import pprint
@@ -89,17 +94,14 @@ API_TOKEN = os.environ['API_TOKEN']
 
 bot = Bot(token=API_TOKEN)
 
-
-# For example use simple MemoryStorage for Dispatcher.
-
 storage = MemoryStorage()
-
 dp = Dispatcher(bot, storage=storage)
 
 
 # States
 class Form(StatesGroup):
     arriving = State()
+    arriving_polling = State()
     departing = State()
     history = State()
     square = State()
@@ -121,6 +123,17 @@ keyboard = types.ReplyKeyboardMarkup(
     input_field_placeholder='Chto vam nado??'
 )
 
+kb_yes = [
+    [
+        types.KeyboardButton(text='DA'),
+        types.KeyboardButton(text='PIZDA')
+    ]
+]
+keyboard_yes = types.ReplyKeyboardMarkup(
+    keyboard=kb_yes,
+    resize_keyboard=True,
+)
+
 
 @dp.message_handler(commands='start')
 async def privet(message: types.Message, state: FSMContext):
@@ -140,6 +153,12 @@ async def arriving_privet(message: types.Message):
     await message.reply('OK. Пришли flight.', reply_markup=types.ReplyKeyboardRemove())
 
 
+async def get_json(url):
+    async with aiohttp.ClientSession() as session:
+        async with session.get(url, headers=api_headers) as r:
+            return await r.json()
+
+
 @dp.message_handler(state=Form.arriving)
 async def arriving_worker(message: types.Message, state: FSMContext):
     date = message['date']
@@ -150,70 +169,92 @@ async def arriving_worker(message: types.Message, state: FSMContext):
 
     flight = text
 
-    url = f'https://{domen3}/clickhandler/?version=1.5&flight={flight}'
-    r = requests.get(url)
-
     try:
-        json = r.json()
+        url = f'https://{domen3}/clickhandler/?version=1.5&flight={flight}'
+        json = await asyncio.create_task(get_json(url))
+
         try:
-            status_text = json['status']['text']
-        except KeyError:
-            status_text = 'karoche libo ne v vozduhe libo ty huynyu prislal'
-        await message.answer(f'status: {status_text}')
+            try:
+                status_text = json['status']['text']
+            except KeyError:
+                status_text = 'karoche libo ne v vozduhe libo ty huynyu prislal'
+            await message.answer(f'status: {status_text}')
 
-        scheduled_arrival_time_unix = json['time']['scheduled']['arrival']
-        scheduled_arrival_time = datetime.fromtimestamp(
-            scheduled_arrival_time_unix)
-        await message.answer(f'Scheduled Arrival Time: {scheduled_arrival_time}')
+            scheduled_arrival_time_unix = json['time']['scheduled']['arrival']
+            scheduled_arrival_time = datetime.fromtimestamp(
+                scheduled_arrival_time_unix)
+            await message.answer(f'Scheduled Arrival Time: {scheduled_arrival_time}')
 
+            estimated_arrival_time_unix = json['time']['estimated']['arrival']
+            if estimated_arrival_time_unix:
+                estimated_arrival_time = datetime.fromtimestamp(
+                    estimated_arrival_time_unix)
+                await message.answer(f'Estimated Arrival Time: {estimated_arrival_time}')
+
+                async with state.proxy() as data:
+                    data['arriving_polling'] = flight
+
+                await Form.arriving_polling.set()
+                await message.answer('subscribe to change in estimated flight time?', reply_markup=keyboard_yes)
+
+            real_arrival_time_unix = json['time']['real']['arrival']
+            if real_arrival_time_unix:
+                await message.answer(f'Flight landed! Real Arrival Time: {datetime.fromtimestamp(real_arrival_time_unix)}')
+                await state.finish()
+
+        except:
+            await message.answer('invalid')
+            await state.finish()
+
+    except JSONDecodeError:
+        await message.answer('invalid, net jsona')
+        await state.finish()
+
+
+@dp.message_handler(state=Form.arriving_polling)
+async def arriving_worker2(message: types.Message, state: FSMContext):
+    if message.text == 'DA':
+        updates = True
+    elif message.text == 'PIZDA':
+        updates = False
+
+    estimated_arrival_time_unix = 1  # bootstrap
+    estimated_buffer = estimated_arrival_time_unix
+
+    async with state.proxy() as data:
+        flight = data['arriving_polling']
+    await state.finish()
+
+    url = f'https://{domen3}/clickhandler/?version=1.5&flight={flight}'
+
+    while estimated_arrival_time_unix:
+        if (abs(estimated_arrival_time_unix - estimated_buffer) > 300) and updates:
+            await message.answer(f'Estimated Arrival Time: {datetime.fromtimestamp(estimated_arrival_time_unix)}', reply_markup=types.ReplyKeyboardRemove())
+        estimated_buffer = estimated_arrival_time_unix
+
+        json = await asyncio.create_task(get_json(url))
         estimated_arrival_time_unix = json['time']['estimated']['arrival']
-        if estimated_arrival_time_unix:
-            await message.answer(f'Estimated Arrival Time: {datetime.fromtimestamp(estimated_arrival_time_unix)}')
-
-        #     # answer = input(
-        #     #     'subscribe to change in estimated flight time? y for yeas, n for no \n')
-        #     # if answer == 'y':
-        #     #     updates = True
-        #     # elif answer == 'n':
-        #     #     updates = False
-        #     # else:
-        #     #     print('ti eblan, delay reboot')
-
-        #     updates = True
-
-        #     estimated_buffer = estimated_arrival_time_unix
-
-        # while estimated_arrival_time_unix:
-        #     if updates:
-        #         if abs(estimated_arrival_time_unix - estimated_buffer) > 300:
-        #             await message.answer(f'Estimated Arrival Time: {datetime.fromtimestamp(estimated_arrival_time_unix)}')
-        #         estimated_buffer = estimated_arrival_time_unix
-        #     json = get_json(bortovoy, headers_arriva)
-        #     estimated_arrival_time_unix = json['time']['estimated']['arrival']
-        #     time.sleep(30)
+        await asyncio.sleep(30)
 
         real_arrival_time_unix = json['time']['real']['arrival']
         if real_arrival_time_unix:
             await message.answer(f'Flight landed! Real Arrival Time: {datetime.fromtimestamp(real_arrival_time_unix)}')
 
-    except:
-        await message.answer('invalid')
-    finally:
-        await state.finish()
-
 
 @dp.message_handler(text='Track departing flight')
 async def departing_privet(message: types.Message):
     await Form.departing.set()
-    await message.reply('OK.  Пришли flight.', reply_markup=types.ReplyKeyboardRemove())
+    await message.reply('OK.  Пришли aircraft registration.', reply_markup=types.ReplyKeyboardRemove())
 
 
-def get_all_scheduled_flights(soup_headers, aircraft_registration):
+async def get_all_scheduled_flights(soup_headers, aircraft_registration):
     aircraft_history_url = f'https://{domen1}/data/aircraft/{aircraft_registration}'
-    r = requests.get(aircraft_history_url, headers=soup_headers)
-    html = r.text
+    async with aiohttp.ClientSession() as session:
+        async with session.get(aircraft_history_url, headers=soup_headers) as r:
+            html = await r.text
+
     soup = BeautifulSoup(html, 'html.parser')
-    
+
     all_flights = []
     flight_history_table = soup.find_all('tr', class_="data-row")
     for i in flight_history_table:
@@ -223,44 +264,32 @@ def get_all_scheduled_flights(soup_headers, aircraft_registration):
     return all_flights
 
 
-def get_json_departing(api_headers, flight):
-    api_url = f'https://{domen2}/zones/fcgi/feed.js?reg=!{flight}'
-    print(api_url)
-    r = requests.get(api_url, headers=api_headers)
-    json = r.json()
-    return json
-
-
 @dp.message_handler(state=Form.departing)
 async def departing_worker(message: types.Message, state: FSMContext):
     date = message['date']
-    text = message.text.lower()
+    text = message.text
     state_for_logs = 'departing'
     user_id = message['from']['id']
     put_message(date, text, state_for_logs, user_id)
 
     aircraft_registration = text
 
-    all_flights = get_all_scheduled_flights(soup_headers, aircraft_registration)
+    # all_flights = get_all_scheduled_flights(soup_headers, aircraft_registration)
+    # print(all_flights)
 
-    try:
-        flight = all_flights[0].lower()
+    # flight = all_flights[0].lower()
+    await message.answer(f'принял, чекаем когда взлетит {aircraft_registration}')
+    await state.finish()
 
-        json = get_json_departing(api_headers, flight)
+    url = f'https://{domen2}/zones/fcgi/feed.js?reg=!{aircraft_registration}'
 
-        await message.answer('Принял запрос. Сейчас эта функция не работает. Но в последсвии тебе будет приходить сообщение когда самолёт взлетит.')
+    while True:
+        json = await asyncio.create_task(get_json(url))
+        if len(json) == 3:
+            break
+        await asyncio.sleep(30)
 
-        # while len(json) == 2:
-        #     json = get_json_departing(api_headers, flight)
-        #     time.sleep(30)
-
-        # await message.answer('on vzletel')
-    
-    except IndexError:
-        await message.answer('invalid')
-
-    finally:
-        await state.finish()
+    await message.answer(f'{aircraft_registration} взлетел, flight: {list(json.keys())[2]}')
 
 
 @dp.message_handler(text='Get history of a flight')
@@ -384,7 +413,7 @@ async def square_worker(message: types.Message, state: FSMContext):
         # all_planes = list(json.keys())[2:]
 
         await message.answer(f"сейчас летает {json['stats']['total']['ads-b']} самолётов")
-    
+
     except ValueError:
         await message.answer('Брат, ты написал хуйню, попробуй ещё раз. Мне нужны координаты, два числа')
 

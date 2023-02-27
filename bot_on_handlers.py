@@ -87,7 +87,7 @@ api_headers = {
 }
 
 
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(filename='./bot.log', encoding='utf-8', level=logging.INFO)
 
 API_TOKEN = os.environ['API_TOKEN']
 
@@ -137,6 +137,8 @@ keyboard_yes = types.ReplyKeyboardMarkup(
 
 @dp.message_handler(commands='start')
 async def privet(message: types.Message, state: FSMContext):
+    logging.info(f'{message}')
+
     user_id = message['from']['id']
     user = get_user(user_id)
     if not user:
@@ -161,13 +163,14 @@ async def get_json(url):
 
 @dp.message_handler(state=Form.arriving)
 async def arriving_worker(message: types.Message, state: FSMContext):
-    date = message['date']
-    text = message.text.lower()
     state_for_logs = 'arriving'
-    user_id = message['from']['id']
-    put_message(date, text, state_for_logs, user_id)
+    logging.info(f'state: {state_for_logs} {message}')
 
-    flight = text
+    # date = message['date']
+    # text = message.text
+    # user_id = message['from']['id']
+
+    flight = message.text.strip().lower()
 
     try:
         url = f'https://{domen3}/clickhandler/?version=1.5&flight={flight}'
@@ -178,18 +181,18 @@ async def arriving_worker(message: types.Message, state: FSMContext):
                 status_text = json['status']['text']
             except KeyError:
                 status_text = 'karoche libo ne v vozduhe libo ty huynyu prislal'
-            await message.answer(f'status: {status_text}')
+            await message.answer(f'{flight} status: {status_text}')
 
             scheduled_arrival_time_unix = json['time']['scheduled']['arrival']
             scheduled_arrival_time = datetime.fromtimestamp(
                 scheduled_arrival_time_unix)
-            await message.answer(f'Scheduled Arrival Time: {scheduled_arrival_time}')
+            await message.answer(f'{flight} Scheduled Arrival Time: {scheduled_arrival_time}')
 
             estimated_arrival_time_unix = json['time']['estimated']['arrival']
             if estimated_arrival_time_unix:
                 estimated_arrival_time = datetime.fromtimestamp(
                     estimated_arrival_time_unix)
-                await message.answer(f'Estimated Arrival Time: {estimated_arrival_time}')
+                await message.answer(f'{flight} Estimated Arrival Time: {estimated_arrival_time}')
 
                 async with state.proxy() as data:
                     data['arriving_polling'] = flight
@@ -199,10 +202,10 @@ async def arriving_worker(message: types.Message, state: FSMContext):
 
             real_arrival_time_unix = json['time']['real']['arrival']
             if real_arrival_time_unix:
-                await message.answer(f'Flight landed! Real Arrival Time: {datetime.fromtimestamp(real_arrival_time_unix)}')
+                await message.answer(f'{flight} Flight landed! Real Arrival Time: {datetime.fromtimestamp(real_arrival_time_unix)}')
                 await state.finish()
 
-        except:
+        except:  # fix me !!!
             await message.answer('invalid')
             await state.finish()
 
@@ -229,7 +232,7 @@ async def arriving_worker2(message: types.Message, state: FSMContext):
 
     while estimated_arrival_time_unix:
         if (abs(estimated_arrival_time_unix - estimated_buffer) > 300) and updates:
-            await message.answer(f'Estimated Arrival Time: {datetime.fromtimestamp(estimated_arrival_time_unix)}', reply_markup=types.ReplyKeyboardRemove())
+            await message.answer(f'{flight} Estimated Arrival Time: {datetime.fromtimestamp(estimated_arrival_time_unix)}', reply_markup=types.ReplyKeyboardRemove())
         estimated_buffer = estimated_arrival_time_unix
 
         json = await asyncio.create_task(get_json(url))
@@ -238,7 +241,7 @@ async def arriving_worker2(message: types.Message, state: FSMContext):
 
         real_arrival_time_unix = json['time']['real']['arrival']
         if real_arrival_time_unix:
-            await message.answer(f'Flight landed! Real Arrival Time: {datetime.fromtimestamp(real_arrival_time_unix)}')
+            await message.answer(f'{flight} Flight landed! Real Arrival Time: {datetime.fromtimestamp(real_arrival_time_unix)}')
 
 
 @dp.message_handler(text='Track departing flight')
@@ -266,18 +269,15 @@ async def get_all_scheduled_flights(soup_headers, aircraft_registration):
 
 @dp.message_handler(state=Form.departing)
 async def departing_worker(message: types.Message, state: FSMContext):
-    date = message['date']
-    text = message.text
     state_for_logs = 'departing'
-    user_id = message['from']['id']
-    put_message(date, text, state_for_logs, user_id)
+    logging.info(f'state: {state_for_logs} {message}')
 
-    aircraft_registration = text
+    aircraft_registration = message.text.strip()
 
     # all_flights = get_all_scheduled_flights(soup_headers, aircraft_registration)
     # print(all_flights)
-
     # flight = all_flights[0].lower()
+
     await message.answer(f'принял, чекаем когда взлетит {aircraft_registration}')
     await state.finish()
 
@@ -300,13 +300,10 @@ async def history_privet(message: types.Message):
 
 @dp.message_handler(state=Form.history)
 async def history_worker(message: types.Message, state: FSMContext):
-    date = message['date']
-    text = message.text.lower()
     state_for_logs = 'history'
-    user_id = message['from']['id']
-    put_message(date, text, state_for_logs, user_id)
+    logging.info(f'state: {state_for_logs} {message}')
 
-    flight = text
+    flight = message.text.strip().lower()
 
     url = f'https://{domen1}/data/flights/{flight}'
 
@@ -388,14 +385,11 @@ async def square_privet(message: types.Message):
 
 @dp.message_handler(state=Form.square)
 async def square_worker(message: types.Message, state: FSMContext):
-    date = message['date']
-    text = message.text.lower()
+    logging.info(f'state: {state_for_logs} {message}')
     state_for_logs = 'square'
-    user_id = message['from']['id']
-    put_message(date, text, state_for_logs, user_id)
 
     try:
-        latitude, longitude = text.split()
+        latitude, longitude = message.text.lower().strip().split()
 
         square_url = f'https://{domen2}/zones/fcgi/feed.js?faa=1&bounds={latitude}%2C{longitude}%2C27.731%2C28.389&satellite=1&mlat=1&flarm=1&adsb=1&gnd=1&air=1&vehicles=1&estimated=1&maxage=14400&gliders=1&stats=1'
 

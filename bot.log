@@ -1,0 +1,30 @@
+INFO:aiogram:Bot: test_bot2 [@for_my_testing_purposes_bot]
+WARNING:aiogram:Updates were skipped successfully.
+INFO:aiogram.dispatcher.dispatcher:Start polling.
+INFO:root:{"message_id": 568, "from": {"id": 647306615, "is_bot": false, "first_name": "Слон", "username": "kingmob23", "language_code": "en"}, "chat": {"id": 647306615, "first_name": "Слон", "username": "kingmob23", "type": "private"}, "date": 1677500586, "text": "/start", "entities": [{"type": "bot_command", "offset": 0, "length": 6}]}
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:SELECT user_account.id, user_account.first_name, user_account.username 
+FROM user_account 
+WHERE user_account.id = ?
+INFO:sqlalchemy.engine.Engine:[generated in 0.00076s] (647306615,)
+INFO:sqlalchemy.engine.Engine:ROLLBACK
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:INSERT INTO user_account (id, first_name, username) VALUES (?, ?, ?)
+INFO:sqlalchemy.engine.Engine:[generated in 0.00071s] (647306615, 'Слон', 'kingmob23')
+INFO:sqlalchemy.engine.Engine:COMMIT
+INFO:root:state: arriving 
+ {"message_id": 572, "from": {"id": 647306615, "is_bot": false, "first_name": "Слон", "username": "kingmob23", "language_code": "en"}, "chat": {"id": 647306615, "first_name": "Слон", "username": "kingmob23", "type": "private"}, "date": 1677500589, "text": "aboba"}
+INFO:aiogram.dispatcher.dispatcher:Stop polling...
+WARNING:aiogram:Goodbye!
+INFO:aiogram:Bot: test_bot2 [@for_my_testing_purposes_bot]
+WARNING:aiogram:Updates were skipped successfully.
+INFO:aiogram.dispatcher.dispatcher:Start polling.
+INFO:root:{"message_id": 574, "from": {"id": 647306615, "is_bot": false, "first_name": "Слон", "username": "kingmob23", "language_code": "en"}, "chat": {"id": 647306615, "first_name": "Слон", "username": "kingmob23", "type": "private"}, "date": 1677500636, "text": "/start", "entities": [{"type": "bot_command", "offset": 0, "length": 6}]}
+INFO:sqlalchemy.engine.Engine:BEGIN (implicit)
+INFO:sqlalchemy.engine.Engine:SELECT user_account.id, user_account.first_name, user_account.username 
+FROM user_account 
+WHERE user_account.id = ?
+INFO:sqlalchemy.engine.Engine:[generated in 0.00146s] (647306615,)
+INFO:sqlalchemy.engine.Engine:ROLLBACK
+INFO:root:state: departing 
+ {"message_id": 578, "from": {"id": 647306615, "is_bot": false, "first_name": "Слон", "username": "kingmob23", "language_code": "en"}, "chat": {"id": 647306615, "first_name": "Слон", "username": "kingmob23", "type": "private"}, "date": 1677500639, "text": "aboba"}

@@ -44,54 +44,16 @@ from proxie import get_webshare_proxies_list, make_get_request_with_proxie
 from db import get_user, put_user, put_message
 
 
+ua_apikey = os.environ['UAAPIKEYß']
+
 domen1 = os.environ['DOMEN1']
 domen2 = os.environ['DOMEN2']
 domen3 = os.environ['DOMEN3']
-
-# headers_arriva = {
-#     'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-#     'Accept-Encoding': 'gzip, deflate, br',
-#     'Accept-Language': 'en-US,en;q=0.5',
-#     'Connection': 'keep-alive',
-#     'Cookie': 'showAds=yes; OptanonConsent=isIABGlobal=false&datestamp=Sun+Nov+27+2022+19%3A17%3A05+GMT%2B0300+(Moscow+Standard+Time)&version=202210.1.0&hosts=&landingPath=NotLandingPage&groups=C0001%3A1%2CC0002%3A1%2CC0003%3A1%2CC0004%3A1&geolocation=RU%3BSPE&AwaitingReconsent=false; OptanonAlertBoxClosed=2022-11-27T16:17:05.,131Z; __cfruid=52b8df4dc84fc6a2a7c1375b3c7a723ff9dfcd79-1669047322;',
-#     'DNT': '1',
-#     'Host': 'data-live.flightradar24.com',
-#     'Sec-Fetch-Dest': 'document',
-#     'Sec-Fetch-Mode': 'navigate',
-#     'Sec-Fetch-Site': 'cross-site',
-#     'TE': 'trailers',
-#     'Upgrade-Insecure-Requests': '1',
-#     'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:107.0) Gecko/20100101 Firefox/107.0'
-# }
-
-soup_headers = {
-    'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
-    'Accept-Encoding': 'utf-8',
-    'Accept-Language': 'en-US,en;q=0.5',
-    'Connection': 'keep-alive',
-    'Cookie': 'showAds=yes; OptanonConsent=isIABGlobal=false&datestamp=Mon+Nov+21+2022+19%3A19%3A07+GMT%2B0300+(Moscow+Standard+Time)&version=202210.1.0&hosts=landingPath=NotLandingPage&groups=C0001%3A1%2CC0002%3A1%2CC0003%3A1%2CC0004%3A1&geolocation=RU%3BSPE&AwaitingReconsent=false; OptanonAlertBoxClosed=2022-11-21T16:19:07.213Z; __cfruid=52b8df4dc84fc6a2a7c1375b3c7a723ff9dfcd79-1669047322;',
-    'DNT': '1',
-    'Host': 'www.flightradar24.com',
-    'If-Modified-Since': 'Mon, 21 Nov 2022 16:19:06 GMT',
-    'Sec-Fetch-Dest': 'document',
-    'Sec-Fetch-Mode': 'navigate',
-    'Sec-Fetch-Site': 'ame-origin',
-    'Sec-Fetch-User': '?1',
-    'TE': 'trailers',
-    'Upgrade-Insecure-Requests': '1',
-    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:107.0) Gecko/20100101 Firefox/107.0'
-}
-
-api_headers = {
-    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64; rv:107.0) Gecko/20100101 Firefox/107.0',
-}
 
 
 logging.basicConfig(filename='./bot.log', encoding='utf-8', level=logging.INFO)
 
 API_TOKEN = os.environ['API_TOKEN']
-
-
 bot = Bot(token=API_TOKEN)
 
 storage = MemoryStorage()
@@ -135,6 +97,15 @@ keyboard_yes = types.ReplyKeyboardMarkup(
 )
 
 
+def get_user_agent():
+    url = "https://api.apilayer.com/user_agent/generate?windows=windows&tablet=tablet&mobile=mobile&mac=mac&linux=linux&ie=ie&firefox=firefox&desktop=desktop&chrome=chrome&android=android"
+    payload = {}
+    headers = {f"apikey": {ua_apikey}}
+    response = requests.request("GET", url, headers=headers, data=payload)
+    result = response.text
+    return result
+
+
 @dp.message_handler(commands='start')
 async def privet(message: types.Message, state: FSMContext):
     logging.info(f'{message}')
@@ -165,10 +136,6 @@ async def get_json(url):
 async def arriving_worker(message: types.Message, state: FSMContext):
     state_for_logs = 'arriving'
     logging.info(f'state: {state_for_logs} {message}')
-
-    # date = message['date']
-    # text = message.text
-    # user_id = message['from']['id']
 
     flight = message.text.strip().lower()
 

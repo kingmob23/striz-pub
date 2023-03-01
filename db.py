@@ -60,9 +60,9 @@ def put_user(user_id, first_name, username):
         session.commit()
 
 
-def put_message(date, text, state, user_id):
-    with Session(engine) as session:
-        message = Messages(date=date, text=text, state=state)
-        user = session.execute(select(User).filter_by(id=user_id)).scalar_one()
-        user.messages.append(message)
-        session.commit()
+# def put_message(date, text, state, user_id):
+#     with Session(engine) as session:
+#         message = Messages(date=date, text=text, state=state)
+#         user = session.execute(select(User).filter_by(id=user_id)).scalar_one()
+#         user.messages.append(message)
+#         session.commit()

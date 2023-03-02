@@ -41,10 +41,12 @@ from aiogram.utils import executor
 
 
 from proxie import get_webshare_proxies_list, make_get_request_with_proxie
-from db import get_user, put_user, put_message
+from db import get_user, put_user
+from dotenv import load_dotenv
 
+load_dotenv()
 
-ua_apikey = os.environ['UAAPIKEYß']
+ua_apikey = os.environ['UAAPIKEY']
 
 domen1 = os.environ['DOMEN1']
 domen2 = os.environ['DOMEN2']
@@ -315,18 +317,19 @@ async def history_worker(message: types.Message, state: FSMContext):
 
             table.append(content)
 
-        with open("test.pdf", "x") as f:
-            pass
+        try:
+            with open("test.pdf", "x") as f:
+                pass
 
-        document = SimpleDocTemplate("./test.pdf", pagesize=A4)
-        items = []
-        t = Table(table)
-        items.append(t)
-        document.build(items)
+            document = SimpleDocTemplate("./test.pdf", pagesize=A4)
+            items = []
+            t = Table(table)
+            items.append(t)
+            document.build(items)
 
-        await message.answer_document(open("./test.pdf", 'rb'))
-
-        os.remove("test.pdf")
+            await message.answer_document(open("./test.pdf", 'rb'))
+        finally:
+            os.remove("test.pdf")
 
     except AttributeError:
         nope = soup.find('div', attrs={

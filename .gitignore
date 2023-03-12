@@ -2,3 +2,4 @@ __pycache__
 .env
 bot.log
 logs.db
+unused.py

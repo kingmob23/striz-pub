@@ -346,6 +346,7 @@ async def square_worker(message: types.Message, state: FSMContext):
 
     finally:
         await state.finish()
+        os.remove("./list.txt")
 
 
 @dp.message_handler(commands=['cancel'], state='*')
